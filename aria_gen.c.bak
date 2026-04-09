@@ -82,7 +82,8 @@ static int64_t aria_str_contains(AriaStr s, AriaStr sub) {
 
 static AriaStr aria_str_char_at(AriaStr s, int64_t idx) {
     if (idx < 0 || idx >= s.len) return aria_str_lit("");
-    return (AriaStr){.ptr = s.ptr + idx, .len = 1};
+    char buf[2] = {s.ptr[idx], '\0'};
+    return aria_str_from_len(buf, 1);
 }
 
 static AriaStr aria_str_slice(AriaStr s, int64_t start, int64_t end) {
@@ -10076,11 +10077,14 @@ __typeof__(lex.Pos) start = lex.Pos;
 		return l;
 	}
 	l = _advance(l);
-	if (is_continuation) {
-		return _add_token(l, TokenKindTkStringEnd, text, start_line, start_col, start);
-	} else {
-		return _add_token(l, TokenKindTkStringLit, text, start_line, start_col, start);
-	}
+	/* TODO: unparsed IIFE type-switch */
+	/* 	return func() interface{} {
+		if is_continuation {
+			return _add_token(l, TokenKindTkStringEnd{}, text, start_line, start_col, start)
+		} else {
+			return _add_token(l, TokenKindTkStringLit{}, text, start_line, start_col, start)
+		}
+	}().(Lexer) */
 }
 
 /* from aria_gen_lexer */
