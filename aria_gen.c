@@ -2254,7 +2254,8 @@ return (NodePool){.Nodes = aria_slice_from_Expr(1, _sentinel_expr())};
 
 /* from aria_gen_ast */
 NodePool pool_add(NodePool pool, Expr e) {
-return (NodePool){.Nodes = aria_append_generic(pool.Nodes, e)};
+NodePool result = (NodePool){.Nodes = aria_append_generic(pool.Nodes, e)};
+return result;
 }
 
 /* from aria_gen_ast */
@@ -14783,28 +14784,18 @@ __typeof__(l) ll = l;
 		(void)tp;
 		ll = _lset_pos(ll, tp);
 		if ((aria_str_eq(child_kind, aria_str_lit("Return")))) {
-			if (child.B1) {
-				LT r = _lower_expr_node(ll, child.C0);
-				(void)r;
-				ll = r.L;
-				ll = _emit_defers(ll);
-				int64_t ret_type = _lget_type(ll, r.Temp);
-				(void)ret_type;
-				ll = _lemit(ll, new_inst(IrOpOpRet, ((int64_t)(0)), r.Temp, ((int64_t)(0)), aria_str_lit(""), ret_type));
-			} else {
-				ll = _emit_defers(ll);
-				ll = _lemit(ll, new_inst(IrOpOpRetVoid, ((int64_t)(0)), ((int64_t)(0)), ((int64_t)(0)), aria_str_lit(""), ((int64_t)(0))));
-			}
+			/* Return: use token-walking (return expr children may not be in pool) */
+			ll = _lower_stmt(ll);
 			last_temp = -((int64_t)(1));
 		} else if (is_last) {
-			LT r = _lower_expr_node(ll, idx_node.C0);
+			/* Last statement: try AST, fall back to token-walk for result */
+			LT r = _lower_expr_result(ll);
 			(void)r;
 			ll = r.L;
 			last_temp = r.Temp;
 		} else {
-			LT r = _lower_expr_node(ll, idx_node.C0);
-			(void)r;
-			ll = r.L;
+			/* Non-last: use token-walking (AST children may not be in pool) */
+			ll = _lower_stmt(ll);
 		}
 		ll = _lskip_nl(ll);
 		si = (si + ((int64_t)(1)));
@@ -15010,6 +15001,13 @@ if ((idx <= ((int64_t)(0)))) {
 	if ((aria_str_eq(nk, aria_str_lit("Binary")))) {
 		__typeof__(node.S1) op = node.S1;
 		(void)op;
+		/* Binary nodes: children may not be in pool (mk_binary sets C0=C1=0).
+		   Fall back to token-walking which handles all binary ops correctly. */
+		{
+			int64_t tp = _find_tok_pos(ll, _expr_start_offset(ll.Pool, idx));
+			ll = _lset_pos(ll, tp);
+			return _lower_expr(ll);
+		}
 		if ((aria_str_eq(op, aria_str_lit(":=")))) {
 			Expr lhs = pool_get(ll.Pool, node.C0);
 			(void)lhs;
